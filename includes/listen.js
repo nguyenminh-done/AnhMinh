@@ -1,4 +1,4 @@
-module.exports = function({ api, client, __GLOBAL, models, timeStart }) {
+module.exports = function({ api, client, global, models, timeStart }) {
 	const Users = require("./controllers/users")({ models, api }),
 				Threads = require("./controllers/threads")({ models, api }),
 				Currencies = require("./controllers/currencies")({ models });
@@ -8,23 +8,23 @@ module.exports = function({ api, client, __GLOBAL, models, timeStart }) {
 	//========= Push all variable from database to environment =========//
 	//////////////////////////////////////////////////////////////////////
 	
-	(async() => {
+	(async function() {
 		try {
-			logger("Khởi tạo biến môi trường", "[ DATABASE ]")
+			logger("Khởi tạo biến môi trường", "[ DATABASE ]");
 			const threads = (await Threads.getAll());
 			const users = (await Users.getAll(["userID", "banned", "name"]));
 
 			for (const info of threads) {
 				client.allThread.push(info.threadID);
-				client.threadSetting.set(info.threadID.toString(), info.settings || {});
-				client.threadInfo.set(info.threadID.toString(), info.threadInfo || {});
-				if (info.banned == 1) client.threadBanned.set(info.threadID.toString(), 1);
+				client.threadSetting.set(info.threadID, info.settings || {});
+				client.threadInfo.set(info.threadID, info.threadInfo || {});
+				if (info.banned == 1) client.threadBanned.set(info.threadID, 1);
 			}
 			logger.loader("Đã tải xong biến môi trường nhóm!");
 			for (const info of users) {
 				client.allUser.push(info.userID);
-				if (info.name && info.name.length != 0) client.nameUser.set(info.userID.toString(), info.name);
-				if (info.banned == 1) client.userBanned.set(info.userID.toString(), 1); 
+				if (info.name && info.name.length != 0) client.nameUser.set(info.userID, info.name);
+				if (info.banned == 1) client.userBanned.set(info.userID, 1); 
 			}
 			logger.loader("Đã tải xong biến môi trường người dùng!");
 			logger("Khởi tạo biến môi trường thành công!", "[ DATABASE ]");
@@ -34,20 +34,20 @@ module.exports = function({ api, client, __GLOBAL, models, timeStart }) {
 		}
 	})();
 
-	logger(`${api.getCurrentUserID()} - [ ${__GLOBAL.settings.PREFIX} ] • ${(!__GLOBAL.settings.BOTNAME) ? "This bot was made by CatalizCS and SpermLord" : __GLOBAL.settings.BOTNAME}`, "[ UID ]");
+	logger(`${api.getCurrentUserID()} - [ ${global.config.PREFIX} ] • ${(!global.config.BOTNAME) ? "This bot was made by CatalizCS and SpermLord" : global.config.BOTNAME}`, "[ UID ]");
 	
 	///////////////////////////////////////////////
 	//========= Require all handle need =========//
 	//////////////////////////////////////////////
 
-	require("./handle/handleSchedule")({ api, __GLOBAL, client, models, Users, Threads, Currencies });
-	const utils = require("../utils/funcs.js")({ api, __GLOBAL, client });
-	const handleCommand = require("./handle/handleCommand")({ api, __GLOBAL, client, models, Users, Threads, Currencies, utils });
-	const handleCommandEvent = require("./handle/handleCommandEvent")({ api, __GLOBAL, client, models, Users, Threads, Currencies, utils });
-	const handleReply = require("./handle/handleReply")({ api, __GLOBAL, client, models, Users, Threads, Currencies });
-	const handleReaction = require("./handle/handleReaction")({ api, __GLOBAL, client, models, Users, Threads, Currencies });
-	const handleEvent = require("./handle/handleEvent")({ api, __GLOBAL, client, models, Users, Threads, Currencies });
-	const handleCreateDatabase = require("./handle/handleCreateDatabase")({ __GLOBAL, api, Threads, Users, Currencies, models, client });
+	require("./handle/handleSchedule")({ api, global, client, models, Users, Threads, Currencies });
+	const utils = require("../utils/funcs.js")({ api, global, client });
+	const handleCommand = require("./handle/handleCommand")({ api, global, client, models, Users, Threads, Currencies, utils });
+	const handleCommandEvent = require("./handle/handleCommandEvent")({ api, global, client, models, Users, Threads, Currencies, utils });
+	const handleReply = require("./handle/handleReply")({ api, global, client, models, Users, Threads, Currencies });
+	const handleReaction = require("./handle/handleReaction")({ api, global, client, models, Users, Threads, Currencies });
+	const handleEvent = require("./handle/handleEvent")({ api, global, client, models, Users, Threads, Currencies });
+	const handleCreateDatabase = require("./handle/handleCreateDatabase")({ global, api, Threads, Users, Currencies, models, client });
 
 	logger.loader(`====== ${Date.now() - timeStart}ms ======`);
 
@@ -60,21 +60,24 @@ module.exports = function({ api, client, __GLOBAL, models, timeStart }) {
 			case "message":
 			case "message_reply":
 			case "message_unsend":
-				handleCommand({ event })
-				handleReply({ event })
-				handleCommandEvent({ event })
-				handleCreateDatabase({ event })
+				handleCommand({ event });
+				handleReply({ event });
+				handleCommandEvent({ event });
+				handleCreateDatabase({ event });
 				break;
 			case "event":
-				handleEvent({ event })
+				handleEvent({ event });
 				break;
 			case "message_reaction":
-				handleReaction({ event })
+				handleReaction({ event });
+				break;
+			case "ping":
+				api.sendMessage("", api.getCurrentUserID(), (error, info) => {});
 				break;
 			default:
 				break;
 		}
-	}
-}
+	};
+};
 
 //THIZ BOT WAS MADE BY ME(CATALIZCS) AND MY BROTHER SPERMLORD - DO NOT STEAL MY CODE (つ ͡ ° ͜ʖ ͡° )つ ✄ ╰⋃╯

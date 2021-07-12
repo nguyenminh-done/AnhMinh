@@ -11,9 +11,13 @@ module.exports.config = {
 };
 
 module.exports.onLoad = () => {
-    const request = require("request");
-    const fs = require("fs-extra");
-    if (!fs.existsSync(__dirname + '/cache/pornList.txt')) request('https://raw.githubusercontent.com/blocklistproject/Lists/master/porn.txt').pipe(fs.createWriteStream(__dirname + "/cache/pornList.txt"));
+    const { existsSync, createWriteStream } = require("fs-extra");
+    const request = require('request');
+
+    const exist = existsSync(__dirname + "/cache/anime.json");
+    const writeData = createWriteStream(__dirname + "/cache/anime.json");
+    if (!exist) return request("https://raw.githubusercontent.com/blocklistproject/Lists/master/porn.txt").pipe(writeData);
+    else return;
 }
 
 module.exports.run = ({ event, api, args, client }) => {

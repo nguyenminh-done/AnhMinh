@@ -1,13 +1,18 @@
-module.exports = function({ api, __GLOBAL, client, models, Users, Threads, Currencies, utils }) {
+module.exports = function({ api, global, client, models, Users, Threads, Currencies, utils }) {
 	const stringSimilarity = require('string-similarity');
 	const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const logger = require("../../utils/log.js");
 	return async function({ event }) {
 		const dateNow = Date.now();
-		const { body: contentMessage, senderID, threadID } = event;
-		if (client.userBanned.has(senderID) || client.threadBanned.has(threadID) || __GLOBAL.settings.allowInbox == false && senderID == threadID) return;
-		var threadSetting = client.threadSetting.get(threadID) || {};
-		var prefixRegex = new RegExp(`^(<@!?${senderID}>|${escapeRegex((threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : __GLOBAL.settings.PREFIX )})\\s*`);
+		var { body: contentMessage, senderID, threadID } = event;
+		const { allowInbox, PREFIX, ADMINBOT, DeveloperMode } = global.config;
+
+		senderID = parseInt(senderID);
+		threadID = parseInt(threadID);
+
+		if (client.userBanned.has(senderID) || client.threadBanned.has(threadID) || allowInbox == false && senderID == threadID) return;
+		const threadSetting = client.threadSetting.get(parseInt(threadID)) || {};
+		const prefixRegex = new RegExp(`^(<@!?${senderID}>|${escapeRegex((threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : PREFIX )})\\s*`);
 		if (!prefixRegex.test(contentMessage)) return;
 
 		//////////////////////////////////////////
@@ -38,34 +43,11 @@ module.exports = function({ api, __GLOBAL, client, models, Users, Threads, Curre
 			try {
 				threadInfo = await api.getThreadInfo(event.threadID);
 				await Threads.setData(threadID, { name: threadInfo.name, threadInfo });
-				client.threadInfo.set(threadID.toString(), threadInfo);
+				client.threadInfo.set(threadID, threadInfo);
 			}
 			catch {
 				logger("Không thể lấy thông tin của nhóm!", "error");
 			}
-		}
-
-		//////////////////////////////////////
-		//========= Check userInfo =========//
-		//////////////////////////////////////
-
-		if (!client.nameUser.has(senderID)) {
-			const axios = require("axios");
-			const cheerio = require("cheerio");
-			const urlFacebook = `https://www.facebook.com/profile.php?id=${senderID}`;
-
-			(async () => {
-				try {
-						const { data } = await axios.get(urlFacebook);
-						const $ = cheerio.load(data);
-						const name = $("title").text() || "Người dùng facebook";
-						await Users.setData(senderID, { name });
-						client.nameUser.set(senderID, name);
-				}
-				catch (e) {
-					console.log(e);
-				}
-			})();
 		}
 
 		////////////////////////////////////////
@@ -75,8 +57,8 @@ module.exports = function({ api, __GLOBAL, client, models, Users, Threads, Curre
 		var permssion = 0;
 		const find = threadInfo.adminIDs.find(el => el.id == senderID);
 		
-		if (__GLOBAL.settings.ADMINBOT.includes(senderID)) permssion = 2;
-		else if (!__GLOBAL.settings.ADMINBOT.includes(senderID) && find) permssion = 1;
+		if (ADMINBOT.includes(senderID.toString())) permssion = 2;
+		else if (!ADMINBOT.includes(senderID) && find) permssion = 1;
 
 		if (command.config.hasPermssion > permssion) return api.sendMessage(`Bạn không đủ quyền hạn để có thể sử dụng lệnh "${command.config.name}"`, event.threadID, event.messageID);
 
@@ -97,10 +79,10 @@ module.exports = function({ api, __GLOBAL, client, models, Users, Threads, Curre
 		///////////////////////////////////
 
 		try {
-			command.run({ api, __GLOBAL, client, event, args, models, Users, Threads, Currencies, utils, permssion });
+			command.run({ api, global, client, event, args, models, Users, Threads, Currencies, utils, permssion });
 			timestamps.set(senderID, dateNow);
 			
-			if (__GLOBAL.settings.DeveloperMode == true) {
+			if (DeveloperMode == true) {
 				const moment = require("moment-timezone");
 				const time = moment.tz("Asia/Ho_Chi_minh").format("HH:MM:ss L");
 				logger(`[ ${time} ] Command Executed: ${commandName} | User: ${senderID} | Arguments: ${args.join(" ")} | Group: ${threadID} | Process Time: ${(Date.now()) - dateNow}ms`, "[ DEV MODE ]");
@@ -111,5 +93,5 @@ module.exports = function({ api, __GLOBAL, client, models, Users, Threads, Curre
 			logger(error + " tại lệnh: " + command.config.name, "error");
 			return api.sendMessage("Đã có lỗi xảy ra khi thực khi lệnh đó. Lỗi: " + error, threadID);
 		}
-	}
-}
+	};
+};

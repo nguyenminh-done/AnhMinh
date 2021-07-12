@@ -28,7 +28,7 @@ module.exports.config = {
 	],
 };
 
-module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, client, Users }) => {
+module.exports.run = async ({ api, event, global, args, permssion, utils, client, Users }) => {
     const content = args.slice(1, args.length);
     const option = args[0];
     const { writeFileSync } = require("fs-extra");
@@ -36,11 +36,13 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
     var config = require(client.dirConfig);
 
     if (option == "list") {
-        const listAdmin = __GLOBAL.settings.ADMINBOT;
+        const listAdmin = global.config.ADMINBOT;
         var msg = [];
         for (const id of listAdmin) {
-            const name = (await Users.getData(id)).name || "Người dùng facebook";
-            msg.push(`- ${name} - https://fb.me/${id}`);
+            if (parseInt(id)) {
+                const name = await Users.getNameUser(id);
+                msg.push(`- ${name} - https://fb.me/${id}`);
+            }
         }
 
         return api.sendMessage(`[Admin] Danh sách toàn bộ admin bot: \n${msg.join("\n")}`, event.threadID, event.messageID);
@@ -49,7 +51,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
 
     else if (option == "add" && permssion == 2) {
         if (event.type == "message_reply") {
-            __GLOBAL.settings.ADMINBOT.push(event.messageReply.senderID);
+            global.config.ADMINBOT.push(event.messageReply.senderID);
             config.ADMINBOT.push(event.messageReply.senderID);
             const name = (await Users.getData(event.messageReply.senderID)).name || "Người dùng facebook";
             writeFileSync(client.dirConfig , JSON.stringify(config, null, 4), 'utf8');
@@ -59,7 +61,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
             var listAdd = [];
             const mention = Object.keys(event.mentions);
             for (const id of mention) {
-                __GLOBAL.settings.ADMINBOT.push(id);
+                global.config.ADMINBOT.push(id);
                 config.ADMINBOT.push(id);
                 listAdd.push(`+ [ ${id} ] » ${event.mentions[id]}`);
             }
@@ -67,7 +69,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
             return api.sendMessage(`[Admin] Đã thêm người dùng vào admin bot:\n${listAdd.join("\n").replace(/\@/g, "")}`, event.threadID, event.messageID);
         }
         else if (content.length != 0 && !isNaN(content)) {
-            __GLOBAL.settings.ADMINBOT.push(content);
+            global.config.ADMINBOT.push(content);
             config.ADMINBOT.push(content);
             const name = (await Users.getData(content)).name || "Người dùng facebook";
             writeFileSync(client.dirConfig , JSON.stringify(config, null, 4), 'utf8');
@@ -80,7 +82,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
         if (event.type == "message_reply") {
             const index = config.ADMINBOT.findIndex(item => item == event.messageReply.senderID);
             if (index == -1) return api.sendMessage(`[Admin] Người dùng mang id ${event.messageReply.senderID} không tồn tại trong admin bot!`, event.threadID, event.messageID);
-            __GLOBAL.settings.ADMINBOT.splice(index, 1);
+            global.config.ADMINBOT.splice(index, 1);
             config.ADMINBOT.splice(index, 1);
             const name = (await Users.getData(event.messageReply.senderID)).name || "Người dùng facebook";
             writeFileSync(client.dirConfig , JSON.stringify(config, null, 4), 'utf8');
@@ -92,7 +94,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
             for (const id of mention) {
                 const index = config.ADMINBOT.findIndex(item => item == id);
                 if (index == -1) return api.sendMessage(`[Admin] Người dùng mang id ${id} không tồn tại trong admin bot!`, event.threadID, event.messageID);
-                __GLOBAL.settings.ADMINBOT.splice(index, 1);
+                global.config.ADMINBOT.splice(index, 1);
                 config.ADMINBOT.splice(index, 1);
                 listAdd.push(`- [ ${id} ] » ${event.mentions[id]}`);
             }
@@ -102,7 +104,7 @@ module.exports.run = async ({ api, event, __GLOBAL, args, permssion, utils, clie
         else if (!isNaN(content)) {
             const index = config.ADMINBOT.findIndex(item => item == event.messageReply.senderID);
             if (index == -1) return api.sendMessage(`[Admin] Người dùng mang id ${content} không tồn tại trong admin bot!`, event.threadID, event.messageID);
-            __GLOBAL.settings.ADMINBOT.splice(index, 1);
+            global.config.ADMINBOT.splice(index, 1);
             config.ADMINBOT.splice(index, 1);
             const name = (await Users.getData(content)).name || "Người dùng facebook";
             writeFileSync(client.dirConfig , JSON.stringify(config, null, 4), 'utf8');
